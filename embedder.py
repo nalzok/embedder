@@ -4,14 +4,13 @@ from torch.utils.data import DataLoader
 from datasets.load import load_dataset
 from datasets import Features, Array3D
 from datasets.fingerprint import Hasher
-from transformers.models.vit.feature_extraction_vit import ViTFeatureExtractor
-from transformers.models.vit.modeling_vit import ViTModel
+from transformers import AutoFeatureExtractor, ViTMAEForPreTraining
 from accelerate import Accelerator
 
 
-pretrained = 'google/vit-base-patch16-224-in21k'
+pretrained = 'facebook/vit-mae-base'
 
-feature_extractor = ViTFeatureExtractor.from_pretrained(pretrained)
+feature_extractor = AutoFeatureExtractor.from_pretrained(pretrained)
 
 
 def preprocess(batch):
@@ -33,7 +32,7 @@ def main():
             batched=True, batch_size=5000, writer_batch_size=5000)
 
     # Calculating embedding
-    model = ViTModel.from_pretrained(pretrained)
+    model = ViTMAEForPreTraining.from_pretrained(pretrained)
 
     dataset.set_format(type='torch', columns=['pixel_values'])
     data = DataLoader(dataset, batch_size=256)
@@ -44,9 +43,9 @@ def main():
     model.eval()
     with torch.no_grad():
         for inputs in data:
-            outputs = model(**inputs)
-            last_hidden_states = outputs.last_hidden_state
-            print(last_hidden_states[:, 0, :].shape, last_hidden_states[0, 0, 0])
+            outputs = model(output_hidden_states=True, **inputs)
+            hidden_states = outputs.hidden_states
+            print([hs.shape for hs in hidden_states])
 
 
 if __name__ == '__main__':
